@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent-Based Weather Modeling: A New Frontier</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Visualization & Content Choices: 
+        - Report Info: Table 1 (Model Comparison) -> Goal: Compare NWP, AI, Proposed ABM -> Viz/Presentation: Interactive Chart.js Bar Chart -> Interaction: Tooltips, visual comparison of features -> Justification: Clear visual summary of qualitative comparisons -> Library: Chart.js.
+        - Report Info: Table 2 (Agent Definitions) -> Goal: Explain conceptual weather agents -> Viz/Presentation: Interactive HTML Cards -> Interaction: Click to expand/collapse details for each agent type -> Justification: Allows focused exploration of complex agent characteristics -> Library/Method: HTML/Tailwind + JS.
+        - Report Info: Framework Architecture -> Goal: Illustrate model components -> Viz/Presentation: Structured HTML/CSS diagram -> Interaction: Static visual, potentially hover effects in a more advanced version -> Justification: Simple visual aid for system understanding -> Library/Method: HTML/Tailwind.
+        - Textual Content (Abstract, Introductions, Explanations, Challenges, Conclusion) -> Goal: Inform and provide context -> Viz/Presentation: Well-formatted text, collapsible sections for dense info -> Interaction: "Read more" toggles (if implemented for length) -> Justification: Standard effective way to present prose -> Library/Method: HTML/Tailwind + JS.
+        - CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #FDFBF7; color: #3A3A3A; }
+        .nav-link { transition: color 0.3s ease, border-bottom-color 0.3s ease; }
+        .nav-link.active { color: #5D9CBB; border-bottom: 2px solid #5D9CBB; }
+        .nav-link:hover { color: #5D9CBB; }
+        .content-section { display: none; }
+        .content-section.active { display: block; }
+        .card { background-color: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); }
+        .card-title { color: #5D9CBB; }
+        .btn-primary { background-color: #5D9CBB; color: white; padding: 0.5rem 1rem; border-radius: 0.375rem; transition: background-color 0.3s ease; }
+        .btn-primary:hover { background-color: #4A8AAB; }
+        .chart-container { position: relative; width: 100%; max-width: 700px; margin-left: auto; margin-right: auto; height: 350px; max-height: 400px; padding: 1rem; background-color: #FFFFFF; border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); }
+        @media (min-width: 768px) { .chart-container { height: 400px; max-height: 450px;} }
+        .table-interactive th, .table-interactive td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #E5E7EB; }
+        .table-interactive th { background-color: #F3F4F6; color: #374151; }
+        .agent-card-details { max-height: 0; overflow: hidden; transition: max-height 0.5s ease-out; }
+        .agent-card-details.expanded { max-height: 1000px; } /* Adjust as needed */
+        h1, h2, h3 { font-weight: 600; margin-bottom: 0.5rem; }
+        h1 { font-size: 2.25rem; line-height: 2.5rem; color: #2c5282; }
+        h2 { font-size: 1.875rem; line-height: 2.25rem; color: #3A3A3A; margin-top: 1.5rem;}
+        h3 { font-size: 1.5rem; line-height: 2rem; color: #5D9CBB; margin-top: 1rem;}
+        p { margin-bottom: 1rem; line-height: 1.625; }
+        ul { list-style-position: inside; margin-bottom: 1rem; }
+        li { margin-bottom: 0.5rem; }
+        .section-intro { font-size: 1.125rem; color: #4A5568; margin-bottom: 1.5rem; border-left: 3px solid #5D9CBB; padding-left: 1rem; }
+        .tab-button { background-color: #E0E7FF; color: #3730A3; padding: 0.5rem 1rem; border-radius: 0.375rem; margin-right: 0.5rem; cursor: pointer; transition: background-color 0.3s ease; }
+        .tab-button.active { background-color: #5D9CBB; color: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+    </style>
+</head>
+<body class="antialiased">
+
+    <header class="bg-white shadow-md sticky top-0 z-50">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <span class="font-bold text-xl text-[#2c5282]">Weather Modeling Reimagined</span>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a href="#overview" class="nav-link px-3 py-2 rounded-md text-sm font-medium">Overview</a>
+                        <a href="#landscape" class="nav-link px-3 py-2 rounded-md text-sm font-medium">Landscape & AI</a>
+                        <a href="#abm-proposal" class="nav-link px-3 py-2 rounded-md text-sm font-medium">ABM Proposal</a>
+                        <a href="#deep-dive" class="nav-link px-3 py-2 rounded-md text-sm font-medium">Key Concepts</a>
+                        <a href="#challenges" class="nav-link px-3 py-2 rounded-md text-sm font-medium">Challenges</a>
+                        <a href="#conclusion" class="nav-link px-3 py-2 rounded-md text-sm font-medium">Conclusion</a>
+                    </div>
+                </div>
+                <div class="md:hidden">
+                    <button id="mobile-menu-button" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[#5D9CBB]">
+                        <span class="sr-only">Open main menu</span>
+                        <svg class="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                        <svg class="hidden h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div id="mobile-menu" class="md:hidden hidden pb-3">
+                <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+                    <a href="#overview" class="nav-link block px-3 py-2 rounded-md text-base font-medium">Overview</a>
+                    <a href="#landscape" class="nav-link block px-3 py-2 rounded-md text-base font-medium">Landscape & AI</a>
+                    <a href="#abm-proposal" class="nav-link block px-3 py-2 rounded-md text-base font-medium">ABM Proposal</a>
+                    <a href="#deep-dive" class="nav-link block px-3 py-2 rounded-md text-base font-medium">Key Concepts</a>
+                    <a href="#challenges" class="nav-link block px-3 py-2 rounded-md text-base font-medium">Challenges</a>
+                    <a href="#conclusion" class="nav-link block px-3 py-2 rounded-md text-base font-medium">Conclusion</a>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto p-4 sm:p-6 lg:p-8">
+        <section id="overview" class="content-section">
+            <h1 class="text-3xl md:text-4xl font-bold mb-6 text-center">Formulating Global Weather and Climate Models: An Agent-Based, Thermodynamically-Driven Approach</h1>
+            <p class="section-intro">This interactive application explores a research proposal for a novel approach to weather and climate modeling. It delves into an agent-based, thermodynamically-driven framework, offering insights into its core concepts, potential, and the challenges ahead in reshaping how we understand and predict atmospheric dynamics.</p>
+            
+            <div class="card p-6 my-6">
+                <h2 class="text-2xl font-semibold mb-3 card-title">Abstract</h2>
+                <p>The prediction of weather and climate remains a paramount scientific challenge. Traditional Numerical Weather Prediction (NWP) models face limitations in computational cost and representing complex processes. The recent emergence of Artificial Intelligence (AI) based weather models, with remarkable accuracy at reduced computational expense, suggests atmospheric dynamics may possess an exploitable lower-dimensional structure. This proposal explores conceptualizing weather patterns (cyclones, anticyclones, jet streams) as self-organizing agents. These agents, defined by physical and energetic features, are globally coupled and driven by solar energy, their behavior governed by energy transport with dissipation, consistent with Maximum Entropy Production (MEP). This research investigates the theoretical underpinnings of such an Agent-Based Model (ABM), its potential for defining agent characteristics, interaction rules, and coupling mechanisms, addressing key challenges towards a new paradigm in Earth system modeling.</p>
+            </div>
+        </section>
+
+        <section id="landscape" class="content-section">
+            <h2>The Current Landscape & AI's Impact</h2>
+            <p class="section-intro">Traditional weather prediction (NWP) methods, while foundational, encounter significant hurdles. The advent of AI models has demonstrated impressive efficiency and accuracy, prompting a re-evaluation of modeling assumptions and opening doors to new paradigms for understanding atmospheric dynamics.</p>
+
+            <div class="grid md:grid-cols-2 gap-6 my-6">
+                <div class="card p-6">
+                    <h3 class="text-xl font-semibold mb-2 card-title">Traditional NWP: Strengths & Limitations</h3>
+                    <p>NWP models are based on fundamental physical laws (primitive equations) but are computationally intensive. High resolution demands massive supercomputing. Representing sub-grid scale processes (like cloud microphysics) via parameterization introduces uncertainties and errors. The chaotic nature of the atmosphere also limits predictability.</p>
+                </div>
+                <div class="card p-6">
+                    <h3 class="text-xl font-semibold mb-2 card-title">The AI Revolution</h3>
+                    <p>AI models (e.g., Aurora, FourCastNet, GraphCast) achieve comparable or superior accuracy to NWP at a fraction of the computational cost. They learn complex patterns from historical data (like ERA5) and can be orders of magnitude faster and more energy-efficient. AI is also enabling "foundation models" for Earth system science, adaptable to various tasks, suggesting they capture fundamental physical knowledge.</p>
+                    <p>This success implies weather dynamics might operate on a lower-dimensional manifold, meaning essential features are learnable without full NWP complexity.</p>
+                </div>
+            </div>
+            
+            <h3 class="text-xl font-semibold my-4 text-center">Comparing Modeling Paradigms</h3>
+            <p class="text-center mb-4">The chart below offers a simplified comparison of key features across Traditional NWP, current AI Models, and the proposed Agent-Based Model (ABM) framework. Values are conceptual (1=Low/Less, 2=Medium, 3=High/More).</p>
+            <div class="chart-container my-6">
+                <canvas id="modelComparisonChart"></canvas>
+            </div>
+            <p class="text-sm text-gray-600 text-center mt-2">This visualization helps to quickly grasp the potential advantages and trade-offs of each approach. The proposed ABM aims to blend physical interpretability with computational efficiency.</p>
+        </section>
+
+        <section id="abm-proposal" class="content-section">
+            <h2>The ABM Proposal: Weather as Agents</h2>
+            <p class="section-intro">This research proposes a novel paradigm: modeling distinct weather patterns—such as cyclones, anticyclones, and jet streams—as autonomous 'agents'. These agents interact, evolve, and are driven by solar energy and fundamental thermodynamic principles, particularly the Maximum Entropy Production (MEP) principle. This section outlines this core concept.</p>
+
+            <div class="card p-6 my-6">
+                <h3 class="text-xl font-semibold mb-2 card-title">Core Idea: Weather Patterns as Agents</h3>
+                <p>The central idea is to represent weather systems as self-organizing agents with defined physical and energetic features. These agents interact globally, driven by solar energy influx. Their behavior is posited to be governed by thermodynamic imperatives: transporting energy from surplus to deficit regions, with inherent dissipation, striving towards a state of Maximum Entropy Production. This seeks to combine AI's efficiency insights with robust physical principles for more interpretable models.</p>
+            </div>
+
+            <h3 class="text-xl font-semibold my-6 text-center">Meet the Weather Agents: A Conceptual Blueprint</h3>
+            <p class="text-center mb-4">The following cards describe conceptual types of weather agents. Click on each agent type to explore its potential attributes, how it might sense its environment, example interaction rules, its hypothetical thermodynamic goal, and what might trigger its state transitions.</p>
+            
+            <div class="grid md:grid-cols-2 gap-6" id="agentCardsContainer">
+            </div>
+        </section>
+
+        <section id="deep-dive" class="content-section">
+            <h2>Key Concepts Deep Dive</h2>
+            <p class="section-intro">Understanding the proposed model requires delving into several key scientific and modeling concepts. This section provides a closer look at Agent-Based Modeling, the critical role of Thermodynamics and the Maximum Entropy Production principle, and the conceptual Model Architecture.</p>
+
+            <div class="mb-6">
+                <button class="tab-button active" data-tab="abm-principles">Agent-Based Modeling</button>
+                <button class="tab-button" data-tab="thermodynamics-mep">Thermodynamics & MEP</button>
+                <button class="tab-button" data-tab="model-architecture">Model Architecture</button>
+            </div>
+
+            <div id="abm-principles" class="tab-content active card p-6">
+                <h3 class="text-xl font-semibold mb-2 card-title">Agent-Based Modeling (ABM) Principles</h3>
+                <p>ABM simulates systems as collections of autonomous "agents." Each agent has attributes and behavioral rules dictating interactions with others and the environment. Key aspects:</p>
+                <ul>
+                    <li><strong>Autonomy:</strong> Agents act independently based on local conditions.</li>
+                    <li><strong>Emergence:</strong> Complex macro-level behaviors arise from simple local interactions, without central control. This "bottom-up" approach is key.</li>
+                    <li><strong>Heterogeneity:</strong> Allows diverse agent types with varying characteristics.</li>
+                    <li><strong>Applications:</strong> Used in ecology, social sciences, energy systems. The idea of "weather" as an agent type exists in ABM literature.</li>
+                </ul>
+                <p>Weather phenomena (cyclones, fronts, jet streams) show characteristics suitable for ABM: recognizable features, lifecycles, interactions, and environmental influence. The Norwegian Cyclone Model is a classic example of a lifecycle that can be mapped to agent states.</p>
+            </div>
+
+            <div id="thermodynamics-mep" class="tab-content card p-6">
+                <h3 class="text-xl font-semibold mb-2 card-title">Thermodynamics & Maximum Entropy Production (MEP)</h3>
+                <p>The Earth's atmosphere is a thermodynamic system driven by solar radiation. Uneven heating creates temperature gradients, driving atmospheric motions to redistribute energy.</p>
+                <ul>
+                    <li><strong>Solar Forcing & Dissipation:</strong> Weather agents are mechanisms for energy transport (sensible and latent heat). Energy is also continuously dissipated (friction, turbulence, radiation).</li>
+                    <li><strong>Entropy & MEP:</strong> The Earth is an open system, far from equilibrium. The MEP principle suggests such systems adjust to maximize their rate of entropy production. This has been used to explain global heat transport and climate features.</li>
+                    <li><strong>Implementing MEP in Agents:</strong> Agent rules could be guided by MEP. For example, agents might prefer movements or interactions that increase local/system-wide entropy production (e.g., maximizing energy conversion and dissipation). Focusing on energy dissipation (a direct contributor to entropy) is a tangible way to incorporate MEP. Lifecycles of agents can be seen as thermodynamic cycles.</li>
+                </ul>
+                <p>Challenges include quantifying entropy production for abstracted agents and ensuring local rules lead to realistic global MEP states. However, MEP offers a compelling physical basis for agent self-organization.</p>
+            </div>
+            
+            <div id="model-architecture" class="tab-content card p-6">
+                <h3 class="text-xl font-semibold mb-2 card-title">Conceptual Model Architecture & Formulation</h3>
+                <p>The proposed global ABM would have three core components:</p>
+                <div class="my-4 p-4 border border-gray-300 rounded-lg bg-gray-50">
+                    <h4 class="font-semibold text-lg text-gray-700">1. Agent Layer:</h4>
+                    <p class="ml-4 text-gray-600">Dynamic population of diverse weather agents (cyclones, jets, etc.) with attributes and behavioral rules.</p>
+                    <h4 class="font-semibold text-lg text-gray-700 mt-2">2. Environmental Layer:</h4>
+                    <p class="ml-4 text-gray-600">Background physical setting (gridded fields of temperature, pressure, SSTs, solar radiation, surface characteristics). Dynamically influenced by agents and its own physics.</p>
+                    <h4 class="font-semibold text-lg text-gray-700 mt-2">3. Thermodynamic Module:</h4>
+                    <p class="ml-4 text-gray-600">Governs energetics: enforces energy conservation, tracks fluxes, calculates entropy production, provides feedback to agents consistent with MEP.</p>
+                </div>
+                <p><strong>Information Flow:</strong> In discrete time steps, agents sense, decide, and act based on rules and environmental conditions, updating their states and the environment. The thermodynamic module assesses energy/entropy.</p>
+                <p><strong>Global Coupling:</strong> Achieved via direct agent interactions, indirect interactions via environmental modification (stigmergy), emergence of teleconnections (e.g., ENSO-like patterns from propagating influences like Rossby waves), and network effects.</p>
+                <p><strong>Parameterization, Calibration, Data Assimilation:</strong> Critical for success. Involves defining agent rule parameters, adjusting them against observations (e.g., ERA5), and integrating real-time data for forecasting (potentially using Ensemble Kalman Filters or Bayesian methods). A unique aspect could be "agent correction and spawning" in DA.</p>
+                <p><strong>Computational Efficiency:</strong> Aims for costs lower than NWP, leveraging parallelism and simpler rules per "unit." Scalability to many agents is a key research area.</p>
+            </div>
+        </section>
+
+        <section id="challenges" class="content-section">
+            <h2>Challenges & Future Research Directions</h2>
+            <p class="section-intro">Developing this novel framework is an ambitious undertaking, fraught with significant scientific and technical hurdles. This section outlines the major challenges and points towards promising future research avenues that could pave the way for its realization.</p>
+            
+            <div class="space-y-6">
+                <div class="card p-6">
+                    <h3 class="text-xl font-semibold mb-2 card-title">Model Validation and Verification</h3>
+                    <p>Ensuring the model adequately represents the real atmosphere is crucial. Validation must occur at agent-level (behavior matches real systems) and system-level (emergent global patterns are realistic). Forecast skill needs rigorous assessment against NWP, AI, and observations. Techniques include empirical validation, model intercomparison ("docking"), sensitivity analysis, and Pattern-Oriented Modeling. A major challenge is the lack of universal validation standards for such ABMs.</p>
+                </div>
+                <div class="card p-6">
+                    <h3 class="text-xl font-semibold mb-2 card-title">Scalability and Computational Demands</h3>
+                    <p>A global model might need millions of agents. Managing their interactions efficiently requires HPC and algorithmic optimizations (spatial indexing, adaptive granularity). The goal is efficiency, but poorly designed ABMs can become computationally intensive.</p>
+                </div>
+                <div class="card p-6">
+                    <h3 class="text-xl font-semibold mb-2 card-title">Representing Multi-Scale Interactions</h3>
+                    <p>Atmospheric processes span vast scales. Coupling agents at different scales (e.g., synoptic cyclones with local convection) is hard. Hierarchical ABM structures or hybrid models (ABM + gridded components) might be needed. Ensuring robust emergence of large-scale phenomena without over-engineering rules is key.</p>
+                </div>
+                 <div class="card p-6">
+                    <h3 class="text-xl font-semibold mb-2 card-title">Integration with Existing Infrastructures</h3>
+                    <p>For practical use, the ABM must integrate with meteorological data streams for assimilation (satellite, surface obs), use standard input formats (from NWP analyses), and produce comparable outputs (standard variables, GRIB/NetCDF formats).</p>
+                </div>
+                <div class="card p-6">
+                    <h3 class="text-xl font-semibold mb-2 card-title">Epistemological Challenges and Reductionism</h3>
+                    <p>Balancing abstraction vs. realism in agent definition is critical. Too simple agents may be unrealistic; too complex may lose efficiency. The parameter space for agent rules can be vast ("curse of dimensionality"). The model must avoid overly reductionist assumptions by grounding agent behavior in physics (like MEP). Understanding *why* emergent patterns arise is also a challenge.</p>
+                </div>
+                <div class="card p-6">
+                    <h3 class="text-xl font-semibold mb-2 card-title">Further Exploration of Thermodynamic Principles</h3>
+                    <p>Beyond MEP, other non-equilibrium thermodynamic concepts (e.g., exergy) or connections to non-equilibrium statistical mechanics could provide deeper theoretical foundations. AI/ML could also be used to develop/calibrate the ABM, e.g., reinforcement learning for agent behaviors or generative models for rule proposal.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="conclusion" class="content-section">
+            <h2>Conclusion: A New Horizon for Weather & Climate Understanding</h2>
+            <p class="section-intro">The proposed agent-based, thermodynamically-driven modeling framework represents a significant, albeit challenging, step towards a new understanding of weather and climate. It aims to bridge the gap between the detailed physics of traditional models and the efficiency of AI, offering a path to more interpretable and potentially highly effective predictive systems.</p>
+            <div class="card p-6 my-6">
+                <p>This approach is motivated by the limitations of current NWP models and the provocative successes of AI systems, which suggest that essential atmospheric dynamics might be captured through more computationally efficient, possibly lower-dimensional, representations.</p>
+                <p>The ABM framework seeks to synthesize the physical grounding of non-equilibrium thermodynamics (especially MEP) with the flexibility of agent-based modeling. A key aspiration is achieving computational efficiencies comparable to AI models, enabling larger forecast ensembles and broader accessibility. Beyond prediction, this framework offers a new lens to investigate atmospheric self-organization, energy flows, and variability drivers. Inspectable agent rules could offer interpretability often lacking in "black-box" AI.</p>
+                <p>However, substantial challenges remain in theory, computation, and methodology. Abstracting complex physics into effective agent rules is central. Success requires interdisciplinary collaboration among atmospheric scientists, physicists, complex systems modelers, and computational scientists.</p>
+                <p>While ambitious, the potential rewards are immense. A viable thermodynamically consistent, agent-based model could paradigm-shift how we simulate and comprehend Earth's atmosphere, unlocking new predictive skill, deeper scientific insight, and better strategies for navigating weather and climate challenges.</p>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-gray-800 text-white mt-12">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
+            <p>Interactive application based on the research proposal "Formulating Global Weather and Climate Models: An Agent-Based, Thermodynamically-Driven Approach".</p>
+            <p class="text-sm mt-2">Original report concept by Sreekanth Pannala. Researcher & Editorial Assistant for the report: Gemini 2.5.</p>
+            <p class="text-xs mt-1">SPA created by an AI assistant.</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const navLinks = document.querySelectorAll('.nav-link');
+            const sections = document.querySelectorAll('.content-section');
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+
+            function setActiveSection(hash) {
+                sections.forEach(section => {
+                    if (`#${section.id}` === hash) {
+                        section.classList.add('active');
+                    } else {
+                        section.classList.remove('active');
+                    }
+                });
+                navLinks.forEach(link => {
+                    if (link.getAttribute('href') === hash) {
+                        link.classList.add('active');
+                    } else {
+                        link.classList.remove('active');
+                    }
+                });
+                window.scrollTo(0,0); // Scroll to top on section change
+            }
+
+            navLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const targetHash = link.getAttribute('href');
+                    setActiveSection(targetHash);
+                    window.location.hash = targetHash; // Update URL hash
+                    if (mobileMenu.classList.contains('block') && !mobileMenu.classList.contains('hidden')) {
+                        mobileMenu.classList.add('hidden');
+                        mobileMenu.classList.remove('block');
+                        mobileMenuButton.querySelectorAll('svg')[0].classList.remove('hidden');
+                        mobileMenuButton.querySelectorAll('svg')[1].classList.add('hidden');
+                    }
+                });
+            });
+            
+            mobileMenuButton.addEventListener('click', () => {
+                const isHidden = mobileMenu.classList.contains('hidden');
+                mobileMenu.classList.toggle('hidden', !isHidden);
+                mobileMenu.classList.toggle('block', isHidden);
+                mobileMenuButton.querySelectorAll('svg')[0].classList.toggle('hidden', isHidden);
+                mobileMenuButton.querySelectorAll('svg')[0].classList.toggle('block', !isHidden);
+                mobileMenuButton.querySelectorAll('svg')[1].classList.toggle('hidden', !isHidden);
+                mobileMenuButton.querySelectorAll('svg')[1].classList.toggle('block', isHidden);
+            });
+
+            const initialHash = window.location.hash || '#overview';
+            setActiveSection(initialHash);
+
+            const modelComparisonData = {
+                labels: ['Traditional NWP', 'Current AI Models', 'Proposed ABM'],
+                datasets: [
+                    {
+                        label: 'Computational Cost (Operational)',
+                        data: [3, 1.5, 1.5], 
+                        backgroundColor: 'rgba(255, 99, 132, 0.7)',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Interpretability',
+                        data: [3, 1, 2], 
+                        backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Data Dependency (Training/Init.)',
+                        data: [1, 3, 2], 
+                        backgroundColor: 'rgba(255, 206, 86, 0.7)',
+                        borderColor: 'rgba(255, 206, 86, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Handling of Emergence/Self-Org.',
+                        data: [1.5, 2, 3], 
+                        backgroundColor: 'rgba(75, 192, 192, 0.7)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }
+                ]
+            };
+
+            const modelComparisonConfig = {
+                type: 'bar',
+                data: modelComparisonData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    if (value === 1) return 'Low/Less';
+                                    if (value === 1.5) return 'Low-Medium';
+                                    if (value === 2) return 'Medium';
+                                    if (value === 2.5) return 'Medium-High';
+                                    if (value === 3) return 'High/More';
+                                    return '';
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Relative Assessment'
+                            }
+                        },
+                        x: {
+                             title: {
+                                display: true,
+                                text: 'Modeling Paradigm'
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    const value = context.parsed.y;
+                                    if (value === 1) label += 'Low/Less';
+                                    else if (value === 1.5) label += 'Low-Medium';
+                                    else if (value === 2) label += 'Medium';
+                                    else if (value === 2.5) label += 'Medium-High';
+                                    else if (value === 3) label += 'High/More';
+                                    
+                                    let originalText = '';
+                                    if (context.dataset.label === 'Computational Cost (Operational)') {
+                                        if(context.label === 'Traditional NWP') originalText = ' (Very High)';
+                                        if(context.label === 'Current AI Models') originalText = ' (Low to Medium)';
+                                        if(context.label === 'Proposed ABM') originalText = ' (Target: Low to Medium)';
+                                    } else if (context.dataset.label === 'Interpretability') {
+                                        if(context.label === 'Traditional NWP') originalText = ' (High)';
+                                        if(context.label === 'Current AI Models') originalText = ' (Low)';
+                                        if(context.label === 'Proposed ABM') originalText = ' (Medium)';
+                                    }
+                                    return label + originalText;
+                                }
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Qualitative Comparison of Weather Modeling Paradigms',
+                            font: { size: 16 }
+                        }
+                    }
+                }
+            };
+            
+            const chartExist = Chart.getChart("modelComparisonChart");
+            if (chartExist) {
+                chartExist.destroy();
+            }
+            new Chart(
+                document.getElementById('modelComparisonChart'),
+                modelComparisonConfig
+            );
+
+            const agentData = [
+                {
+                    name: "Cyclonic System Agent",
+                    type: "(e.g., Mid-latitude or Tropical Cyclone)",
+                    attributes: "Location, Spatial Footprint (km²), Central Pressure (hPa), Max Wind Speed (m/s), Kinetic Energy (J), Available Potential Energy (J), Moisture Content (kg), Vorticity (s⁻¹), Lifecycle Stage (e.g., developing, mature, dissipating)",
+                    sensedVars: "SST, Vertical Wind Shear, Background Temperature/Pressure/Moisture Gradients, Presence of Jet Stream Agents, Underlying Topography/Land Cover",
+                    interactionRules: "- Intensify if over warm SST > X°C and low shear. <br> - Weaken/decay upon landfall or moving over cold water. <br> - Merge with another cyclonic agent if proximity < Y km and intensity difference < Z. <br> - Steer along path of nearby Jet Stream Agent.",
+                    mepGoal: "- Move towards regions of maximum available potential energy release. <br> - Adjust structure to maximize local heat/moisture transport rate from surface to upper levels. <br> - Dissipate kinetic energy at a rate proportional to intensity.",
+                    stateTriggers: "- Lifecycle progression (time-based). <br> - Crossing SST thresholds. <br> - Landfall. <br> - Interaction with strong shear or dry air intrusion."
+                },
+                {
+                    name: "Anticyclonic System Agent",
+                    type: "(e.g., High-Pressure System, Blocking High)",
+                    attributes: "Location, Spatial Footprint (km²), Central Pressure (hPa), Stability Index, Age/Persistence",
+                    sensedVars: "Background Temperature/Pressure Fields, Presence of approaching Cyclonic Agents",
+                    interactionRules: "- Strengthen/maintain if large-scale subsidence is supported. <br> - Weaken if undercut by strong surface heating or advection. <br> - Block or divert path of approaching Cyclonic Agents if intensity > threshold.",
+                    mepGoal: "- Maintain configuration that minimizes local atmospheric instability (suppresses vertical motion). <br> - Maximize residence time in a stable configuration.",
+                    stateTriggers: "- Changes in large-scale flow pattern. <br> - Erosion by strong weather systems. <br> - Seasonal transitions."
+                },
+                {
+                    name: "Jet Stream Segment Agent",
+                    attributes: "Location (axis path), Length (km), Max Wind Speed (m/s), Vertical/Horizontal Shear, Temperature Gradient Across Jet",
+                    sensedVars: "Meridional Temperature Gradient, Tropopause Height, Presence of large-scale Rossby Waves",
+                    interactionRules: "- Intensify/weaken based on changes in underlying meridional temperature gradient. <br> - Shift latitudinally in response to Rossby wave propagation. <br> - Influence track and intensity of Cyclonic Agents passing nearby/underneath.",
+                    mepGoal: "- Organize to maximize poleward heat transport efficiency along its path. <br> - Adjust structure to maintain geostrophic/thermal wind balance.",
+                    stateTriggers: "- Changes in global temperature distribution. <br> - Interaction with breaking Rossby waves. <br> - Seasonal forcing."
+                },
+                {
+                    name: "Convective Complex Agent",
+                    type: "(e.g., MCS, Squall Line)",
+                    attributes: "Location, Spatial Area (km²), Max Reflectivity (dBZ), Movement Vector (speed, direction), Available Convective Potential Energy (CAPE) in environment",
+                    sensedVars: "CAPE, CIN (Convective Inhibition), Low-level Moisture, Vertical Wind Shear, Presence of triggering boundaries (e.g., fronts)",
+                    interactionRules: "- Initiate/grow if CAPE > X and CIN < Y. <br> - Propagate based on cold pool dynamics and environmental shear. <br> - Dissipate as CAPE is consumed or unfavorable shear encountered. <br> - Modify local environment (e.g., create cold pool, moisten mid-levels).",
+                    mepGoal: "- Organize to maximize rate of conversion of CAPE to kinetic energy and latent heat release. <br> - Maximize local vertical transport of heat and moisture.",
+                    stateTriggers: "- Availability/depletion of CAPE. <br> - Encountering stable atmospheric layers. <br> - Disruption by larger-scale flow."
+                }
+            ];
+
+            const agentCardsContainer = document.getElementById('agentCardsContainer');
+            agentData.forEach(agent => {
+                const cardHTML = `
+                    <div class="card p-6 cursor-pointer agent-card">
+                        <h4 class="text-lg font-semibold card-title">${agent.name}</h4>
+                        ${agent.type ? `<p class="text-sm text-gray-500 mb-2">${agent.type}</p>` : ''}
+                        <div class="agent-card-details mt-2 text-sm">
+                            <p><strong>Key Attributes:</strong> ${agent.attributes}</p>
+                            <p><strong>Sensed Variables:</strong> ${agent.sensedVars}</p>
+                            <p><strong>Example Interactions:</strong> ${agent.interactionRules}</p>
+                            <p><strong>MEP-Driven Goal:</strong> ${agent.mepGoal}</p>
+                            <p><strong>State Triggers:</strong> ${agent.stateTriggers}</p>
+                        </div>
+                    </div>
+                `;
+                agentCardsContainer.innerHTML += cardHTML;
+            });
+
+            document.querySelectorAll('.agent-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    card.querySelector('.agent-card-details').classList.toggle('expanded');
+                });
+            });
+
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const tabId = button.dataset.tab;
+
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+
+                    tabContents.forEach(content => {
+                        if (content.id === tabId) {
+                            content.classList.add('active');
+                        } else {
+                            content.classList.remove('active');
+                        }
+                    });
+                });
+            });
+        });
+    </script>
+</body>
+</html>
