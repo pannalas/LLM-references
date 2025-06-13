@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2D Fluid Solver with AMR</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* bg-gray-900 */
+        }
+        .control-panel, .visualization-card {
+            background-color: #1F2937; /* bg-gray-800 */
+            border: 1px solid #374151; /* border-gray-700 */
+        }
+        select {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.5rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+            padding-right: 2.5rem;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
+    </style>
+</head>
+<body class="text-gray-200">
+
+    <div class="container mx-auto p-4 lg:p-8">
+        
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-3xl lg:text-4xl font-bold text-white">2D Fluid Solver Demonstrator</h1>
+            <p class="mt-2 text-lg text-gray-400">Visualizing canonical fluid dynamics problems with AMR and k-ε turbulence.</p>
+        </header>
+
+        <!-- Main Content -->
+        <div class="flex flex-col lg:flex-row gap-8">
+
+            <!-- Left Panel: Controls -->
+            <aside class="lg:w-1/3 w-full">
+                <div class="control-panel rounded-lg shadow-lg p-6 sticky top-8">
+                    <h2 class="text-xl font-semibold text-white mb-4 border-b border-gray-700 pb-3">Simulation Setup</h2>
+                    
+                    <div class="mb-6">
+                        <label for="problem-select" class="block text-sm font-medium text-gray-300 mb-2">Choose a Problem:</label>
+                        <select id="problem-select" class="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <option value="lid_driven_cavity">Lid-Driven Cavity</option>
+                            <option value="backward_facing_step" selected>Backward-Facing Step</option>
+                            <option value="channel">Channel Flow</option>
+                            <option value="couette">Couette Flow</option>
+                        </select>
+                    </div>
+                    
+                    <div id="description" class="text-sm text-gray-400 mb-6 p-4 bg-gray-900/50 rounded-md min-h-[120px]">
+                        <!-- Description will be loaded here -->
+                    </div>
+
+                    <h3 class="text-lg font-semibold text-white mb-3 border-b border-gray-700 pb-2">Parameters</h3>
+                    <div id="parameters" class="text-sm space-y-2">
+                       <!-- Parameters will be loaded here -->
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Right Panel: Visualizations -->
+            <main class="lg:w-2/3 w-full">
+                <div class="grid grid-cols-1 gap-8">
+                    <div class="visualization-card rounded-lg shadow-lg p-4">
+                        <h3 class="text-lg font-semibold text-white mb-3 text-center">Adaptive Mesh Visualization</h3>
+                        <div id="grid-display" class="w-full h-auto aspect-video bg-gray-900/50 rounded-md overflow-hidden">
+                            <!-- SVG for AMR grid will be loaded here -->
+                        </div>
+                    </div>
+                    <div class="visualization-card rounded-lg shadow-lg p-4">
+                        <h3 class="text-lg font-semibold text-white mb-3 text-center">Velocity Vectors</h3>
+                        <div id="vector-display" class="w-full h-auto aspect-video bg-gray-900/50 rounded-md overflow-hidden">
+                            <!-- SVG for vectors will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        const problemData = {
+            'lid_driven_cavity': {
+                description: 'A classic benchmark problem. Fluid in a square cavity is set in motion by a moving lid at the top. This generates a primary vortex and smaller, secondary vortices in the corners at higher Reynolds numbers.',
+                params: { 'Lid Velocity': '1.0 m/s', 'Viscosity': '0.001 m²/s', 'Domain': '1x1 m' },
+                gridSvg: `<svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet"><defs><style>.r{stroke:#4b5563;stroke-width:0.2;fill:none}.g{stroke:#6b7280;stroke-width:0.1;fill:none}</style></defs><g id="grid-group-cavity"></g></svg>`,
+                vectorSvg: `<svg viewBox="-5 -5 110 110" preserveAspectRatio="xMidYMid meet"><defs><marker id="arrowhead" markerWidth="5" markerHeight="3.5" refX="0" refY="1.75" orient="auto"><polygon points="0 0, 5 1.75, 0 3.5" fill="#f59e0b"/></marker><style>.v{stroke:#f59e0b;stroke-width:0.8;marker-end:url(#arrowhead);}</style></defs><rect width="100" height="100" fill="#1F2937" stroke="#4b5563" stroke-width="1"/><g id="vector-field-cavity"></g></svg>`
+            },
+            'backward_facing_step': {
+                description: 'Flow enters a channel and encounters a sudden expansion. This creates a recirculation zone behind the step, a key feature for studying flow separation and reattachment.',
+                params: { 'Inlet Velocity': '1.0 m/s', 'Viscosity': '0.001 m²/s', 'Step Height': '1.0 m' },
+                gridSvg: `<svg viewBox="0 0 200 80" preserveAspectRatio="xMidYMid meet"><defs><style>.r{stroke:#4b5563;stroke-width:0.2;fill:none}.g{stroke:#6b7280;stroke-width:0.1;fill:none}.solid{fill:#374151;stroke:none}</style></defs><g id="grid-group-bfs"></g></svg>`,
+                vectorSvg: `<svg viewBox="-5 -5 210 90" preserveAspectRatio="xMidYMid meet"><defs><marker id="arrowhead-bfs" markerWidth="5" markerHeight="3.5" refX="0" refY="1.75" orient="auto"><polygon points="0 0, 5 1.75, 0 3.5" fill="#f59e0b"/></marker><style>.v-bfs{stroke:#f59e0b;stroke-width:0.8;marker-end:url(#arrowhead-bfs);}</style></defs><rect x="0" y="0" width="200" height="80" fill="#1F2937"/><g id="vector-field-bfs"></g></svg>`
+            },
+            'channel': {
+                description: 'A fundamental problem where fluid flows between two parallel plates. A parabolic velocity profile develops for laminar flow. We simulate flow entering at a uniform velocity.',
+                params: { 'Inlet Velocity': '1.0 m/s', 'Viscosity': '0.005 m²/s', 'Domain': '3x1 m' },
+                gridSvg: `<svg viewBox="0 0 150 50" preserveAspectRatio="xMidYMid meet"><defs><style>.r{stroke:#4b5563;stroke-width:0.2;fill:none}.g{stroke:#6b7280;stroke-width:0.1;fill:none}</style></defs><g id="grid-group-channel"></g></svg>`,
+                vectorSvg: `<svg viewBox="-5 -5 160 60" preserveAspectRatio="xMidYMid meet"><defs><marker id="arrowhead-ch" markerWidth="5" markerHeight="3.5" refX="0" refY="1.75" orient="auto"><polygon points="0 0, 5 1.75, 0 3.5" fill="#f59e0b"/></marker><style>.v-ch{stroke:#f59e0b;stroke-width:0.8;marker-end:url(#arrowhead-ch);}</style></defs><rect x="0" y="0" width="150" height="50" fill="#1F2937" stroke="#4b5563" stroke-width="1"/><g id="vector-field-channel"></g></svg>`
+            },
+            'couette': {
+                description: 'Flow between two infinite parallel plates, where one plate moves relative to the other. This induces a linear velocity profile in the fluid for laminar, steady-state conditions.',
+                params: { 'Top Wall Velocity': '1.0 m/s', 'Viscosity': '0.005 m²/s', 'Domain': '2x1 m' },
+                gridSvg: `<svg viewBox="0 0 100 50" preserveAspectRatio="xMidYMid meet"><defs><style>.r{stroke:#4b5563;stroke-width:0.2;fill:none}</style></defs><g id="grid-group-couette"></g></svg>`,
+                vectorSvg: `<svg viewBox="-5 -5 110 60" preserveAspectRatio="xMidYMid meet"><defs><marker id="arrowhead-co" markerWidth="5" markerHeight="3.5" refX="0" refY="1.75" orient="auto"><polygon points="0 0, 5 1.75, 0 3.5" fill="#f59e0b"/></marker><style>.v-co{stroke:#f59e0b;stroke-width:0.8;marker-end:url(#arrowhead-co);}</style></defs><rect x="0" y="0" width="100" height="50" fill="#1F2937" stroke="#4b5563" stroke-width="1"/><g id="vector-field-couette"></g></svg>`
+            }
+        };
+
+        const problemSelect = document.getElementById('problem-select');
+        const descriptionEl = document.getElementById('description');
+        const paramsEl = document.getElementById('parameters');
+        const gridDisplayEl = document.getElementById('grid-display');
+        const vectorDisplayEl = document.getElementById('vector-display');
+        const svgNS = "http://www.w3.org/2000/svg";
+
+        function createSvgElement(tag, attributes) {
+            const el = document.createElementNS(svgNS, tag);
+            for (const key in attributes) {
+                el.setAttribute(key, attributes[key]);
+            }
+            return el;
+        }
+
+        // --- Drawing Functions for Grids ---
+        function drawCavityGrid() {
+            const gridGroup = document.getElementById('grid-group-cavity');
+            if (!gridGroup) return;
+            gridGroup.innerHTML = '';
+            gridGroup.appendChild(createSvgElement('rect', {x:0,y:0,width:100,height:100,class:'r'}));
+            [{x:50,y:50},{x:0,y:50},{x:0,y:0},{x:50,y:0}].forEach(d => gridGroup.appendChild(createSvgElement('rect',{x:d.x, y:d.y, width:50, height:50, class:'r'})));
+            const g1 = createSvgElement('g', {transform: 'translate(0, 50)'});
+            [{x:25,y:25},{x:0,y:25},{x:0,y:0},{x:25,y:0}].forEach(d => g1.appendChild(createSvgElement('rect',{x:d.x,y:d.y,width:25,height:25,class:'r'})));
+            gridGroup.appendChild(g1);
+            const g2 = createSvgElement('g', {transform: 'translate(50, 0)'});
+            [{x:25,y:25},{x:0,y:25},{x:0,y:0},{x:25,y:0}].forEach(d => g2.appendChild(createSvgElement('rect',{x:d.x,y:d.y,width:25,height:25,class:'r'})));
+            gridGroup.appendChild(g2);
+            const g3 = createSvgElement('g', {transform: 'translate(75, 25)'});
+            [{x:12.5,y:12.5},{x:0,y:12.5},{x:0,y:0},{x:12.5,y:0}].forEach(d => g3.appendChild(createSvgElement('rect',{x:d.x,y:d.y,width:12.5,height:12.5,class:'g'})));
+            gridGroup.appendChild(g3);
+        }
+
+        function drawBfsGrid() {
+            const gridGroup = document.getElementById('grid-group-bfs');
+            if (!gridGroup) return;
+            gridGroup.innerHTML = '';
+            gridGroup.appendChild(createSvgElement('rect', {class:'solid', x:0, y:40, width:40, height:40}));
+            for (let i=0; i<5; i++) for (let j=0; j<2; j++) {
+                if ((i===0 && j===1)||(i===1 && j===1)) continue;
+                gridGroup.appendChild(createSvgElement('rect', {x:i*40, y:j*40, width:40, height:40, class:'r'}));
+            }
+            const fineGroup = createSvgElement('g');
+            [{x:40,y:40},{x:60,y:40},{x:40,y:60},{x:60,y:60}].forEach(d=>fineGroup.appendChild(createSvgElement('rect',{x:d.x,y:d.y,width:20,height:20,class:'g'})));
+            gridGroup.appendChild(fineGroup);
+        }
+
+        function drawChannelGrid() {
+            const gridGroup = document.getElementById('grid-group-channel');
+            if (!gridGroup) return;
+            gridGroup.innerHTML = '';
+            for (let i=0; i<6; i++) for (let j=0; j<2; j++) gridGroup.appendChild(createSvgElement('rect',{x:i*25,y:j*25,width:25,height:25,class:'r'}));
+            for (let i=0; i<6; i++) {
+                const fineGroup1 = createSvgElement('g');
+                [{x:i*25,y:0},{x:i*25+12.5,y:0},{x:i*25,y:12.5},{x:i*25+12.5,y:12.5}].forEach(d=>fineGroup1.appendChild(createSvgElement('rect',{x:d.x,y:d.y,width:12.5,height:12.5,class:'g'})));
+                const fineGroup2 = fineGroup1.cloneNode(true);
+                fineGroup2.setAttribute('transform','translate(0, 25)');
+                gridGroup.appendChild(fineGroup1);
+                gridGroup.appendChild(fineGroup2);
+            }
+        }
+
+        function drawCouetteGrid() {
+            const gridGroup = document.getElementById('grid-group-couette');
+            if (!gridGroup) return;
+            gridGroup.innerHTML = '';
+            for (let i=0; i<4; i++) for (let j=0; j<2; j++) gridGroup.appendChild(createSvgElement('rect',{x:i*25,y:j*25,width:25,height:25,class:'r'}));
+        }
+
+        // --- Drawing Functions for Vectors ---
+        function drawCavityVectors() {
+            const vectorGroup = document.getElementById('vector-field-cavity');
+            if (!vectorGroup) return;
+            vectorGroup.innerHTML = '';
+            for(let i=1; i<10; i++) for(let j=1; j<10; j++) {
+                const x=i*10, y=j*10;
+                const u=Math.sin(Math.PI*x/100)*Math.cos(2*Math.PI*y/100), v=-Math.cos(Math.PI*x/100)*Math.sin(2*Math.PI*y/100);
+                const angle=Math.atan2(v,u), mag=Math.sqrt(u*u+v*v)*8;
+                vectorGroup.appendChild(createSvgElement('line',{x1:x,y1:y,x2:x+mag*Math.cos(angle),y2:y+mag*Math.sin(angle),class:'v'}));
+            }
+            for(let i=1; i<10; i++) vectorGroup.appendChild(createSvgElement('line',{x1:i*10-4,y1:100,x2:i*10+4,y2:100,class:'v'}));
+        }
+
+        function drawBfsVectors() {
+            const vectorGroup = document.getElementById('vector-field-bfs');
+            if (!vectorGroup) return;
+            vectorGroup.innerHTML = '';
+            vectorGroup.appendChild(createSvgElement('rect', {x:0, y:40, width:40, height:40, fill:'#374151'}));
+            for(let i=0; i<20; i++) for(let j=0; j<8; j++) {
+                const x=i*10+5, y=j*10+5;
+                if (x<40&&y>40) continue;
+                let u=1.0, v=0.0;
+                if(x>40&&x<100&&y>40){u=-0.3*Math.sin(Math.PI*(x-40)/60);v=0.2*Math.sin(Math.PI*(y-40)/40)}else if(x>40){v=-0.3*Math.exp(-(x-40)/40)*Math.sin(Math.PI*y/80)}
+                const angle=Math.atan2(v,u), mag=Math.sqrt(u*u+v*v)*8;
+                vectorGroup.appendChild(createSvgElement('line',{x1:x,y1:y,x2:x+mag*Math.cos(angle),y2:y+mag*Math.sin(angle),class:'v-bfs'}));
+            }
+        }
+        
+        function drawChannelVectors() {
+            const vectorGroup = document.getElementById('vector-field-channel');
+            if (!vectorGroup) return;
+            vectorGroup.innerHTML = '';
+            for(let i=0; i<15; i++) for(let j=1; j<5; j++) {
+                const x=i*10+5, y=j*10, y_norm=(y-25)/25, u=1-y_norm*y_norm;
+                vectorGroup.appendChild(createSvgElement('line',{x1:x,y1:y,x2:x+u*8,y2:y,class:'v-ch'}));
+            }
+        }
+
+        function drawCouetteVectors() {
+            const vectorGroup = document.getElementById('vector-field-couette');
+            if (!vectorGroup) return;
+            vectorGroup.innerHTML = '';
+            for(let i=0; i<10; i++) for(let j=1; j<5; j++) {
+                const x=i*10+5, y=j*10, u=y/50.0;
+                vectorGroup.appendChild(createSvgElement('line',{x1:x,y1:y,x2:x+u*15,y2:y,class:'v-co'}));
+            }
+        }
+        
+        function updateDisplay(problemKey) {
+            const data = problemData[problemKey];
+            if (!data) return;
+
+            descriptionEl.textContent = data.description;
+            paramsEl.innerHTML = '';
+            for (const [key, value] of Object.entries(data.params)) {
+                const paramDiv = document.createElement('div');
+                paramDiv.className = 'flex justify-between';
+                paramDiv.innerHTML = `<span class="text-gray-400">${key}:</span><span class="font-mono font-semibold text-white">${value}</span>`;
+                paramsEl.appendChild(paramDiv);
+            }
+            
+            gridDisplayEl.innerHTML = data.gridSvg;
+            vectorDisplayEl.innerHTML = data.vectorSvg;
+
+            const gridDrawers = {
+                'lid_driven_cavity': drawCavityGrid,
+                'backward_facing_step': drawBfsGrid,
+                'channel': drawChannelGrid,
+                'couette': drawCouetteGrid
+            };
+            
+            const vectorDrawers = {
+                'lid_driven_cavity': drawCavityVectors,
+                'backward_facing_step': drawBfsVectors,
+                'channel': drawChannelVectors,
+                'couette': drawCouetteVectors
+            };
+
+            gridDrawers[problemKey]();
+            vectorDrawers[problemKey]();
+        }
+
+        problemSelect.addEventListener('change', (e) => {
+            updateDisplay(e.target.value);
+        });
+
+        // Initial load
+        updateDisplay(problemSelect.value);
+
+    </script>
+</body>
+</html>
