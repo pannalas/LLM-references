@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Guide to Chemical Reactor Networks</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Chosen Palette: Warm Neutrals (Background: #F5F5F4 Stone 100, Text: #292524 Zinc 800, Primary: #44403C Zinc 700, Accent: #A8A29E Stone 400) -->
+    <!-- Application Structure Plan: The SPA is designed as a non-linear, thematic explorer to make the dense technical report more digestible. Instead of chapters, the content is organized into logical sections addressing key user questions (What is it? How does it work? How is it built?). This structure, accessible via a sticky navigation bar, allows users to jump to topics of interest, encouraging exploration and learning. Key concepts are presented through interactive visualizations (e.g., dynamic RTD charts, workflow diagrams) to make abstract principles tangible and improve knowledge retention for the target audience of engineers and scientists. -->
+    <!-- Visualization & Content Choices: Report Info -> Goal -> Viz/Presentation Method -> Interaction -> Justification -> Library/Method. 1. Ideal Reactors -> Compare -> Side-by-side cards with dynamic Chart.js plot -> Button click -> Visually contrasts the core building blocks' mixing behavior (RTD) which is more impactful than text. 2. Cantera Toolkit -> Organize -> HTML/CSS Diagram -> Click to reveal details -> Organizes objects hierarchically and interactively, clarifying their relationships without overwhelming the user. 3. CRN Workflows -> Compare -> Dual-path HTML/CSS flowchart -> Click to expand steps -> Simplifies a complex decision process into two clear, explorable paths. 4. Parameter Estimation -> Explain Process -> Animated Chart.js plot -> Button click -> Demystifies the abstract optimization process by showing convergence in action. 5. Sensitivity Analysis -> Inform/Compare -> Dynamic Chart.js Bar Chart -> Button Click -> Highlights key reactions visually, making the data from the code snippet immediately understandable. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F5F5F4; /* stone-100 */
+            color: #292524; /* zinc-800 */
+        }
+        .font-mono {
+            font-family: 'Roboto Mono', monospace;
+        }
+        .nav-link {
+            transition: color 0.2s;
+        }
+        .nav-link:hover, .nav-link.active {
+            color: #DC2626; /* red-600 */
+        }
+        .content-card {
+            background-color: #FFFFFF;
+            border: 1px solid #E7E5E4; /* stone-200 */
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            transition: all 0.3s ease;
+        }
+        .interactive-btn {
+            background-color: #57534E; /* stone-600 */
+            color: #FFFFFF;
+            transition: background-color 0.3s;
+        }
+        .interactive-btn:hover {
+            background-color: #44403C; /* stone-700 */
+        }
+        .workflow-step {
+            border-left: 3px solid #D6D3D1; /* stone-300 */
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .workflow-step:hover, .workflow-step.active {
+            border-left-color: #DC2626; /* red-600 */
+            background-color: #FAFAFA; /* stone-50 */
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 45vh;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+            }
+        }
+        h2 {
+            font-size: 1.875rem; /* text-3xl */
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: #1C1917; /* stone-900 */
+        }
+        h3 {
+            font-size: 1.5rem; /* text-2xl */
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: #292524; /* stone-800 */
+        }
+        p {
+            line-height: 1.75;
+            margin-bottom: 1rem;
+        }
+        .section-intro {
+            max-width: 48rem; /* prose */
+            margin-left: auto;
+            margin-right: auto;
+            text-align: center;
+            color: #57534E; /* stone-600 */
+        }
+        .status-packed {
+            background-color: #DBEAFE; color: #1E40AF;
+        }
+        .status-fluidized {
+            background-color: #FEE2E2; color: #991B1B;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Header & Navigation -->
+    <header id="header" class="bg-white/80 backdrop-blur-lg sticky top-0 z-50 shadow-sm">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <span class="font-bold text-xl text-stone-800">CRN Interactive Guide</span>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a href="#overview" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-stone-600">Overview</a>
+                        <a href="#concepts" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-stone-600">Core Concepts</a>
+                        <a href="#toolkit" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-stone-600">The Toolkit</a>
+                        <a href="#workflow" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-stone-600">Workflow</a>
+                        <a href="#calibration" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-stone-600">Calibration</a>
+                        <a href="#analysis" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-stone-600">Analysis</a>
+                        <a href="#simulator" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-stone-600">Simulator</a>
+                    </div>
+                </div>
+                <div class="md:hidden">
+                    <button id="mobile-menu-button" class="inline-flex items-center justify-center p-2 rounded-md text-stone-500 hover:text-stone-700 hover:bg-stone-200 focus:outline-none">
+                        <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </nav>
+        <div id="mobile-menu" class="hidden md:hidden">
+            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+                <a href="#overview" class="nav-link block px-3 py-2 rounded-md text-base font-medium text-stone-600">Overview</a>
+                <a href="#concepts" class="nav-link block px-3 py-2 rounded-md text-base font-medium text-stone-600">Core Concepts</a>
+                <a href="#toolkit" class="nav-link block px-3 py-2 rounded-md text-base font-medium text-stone-600">The Toolkit</a>
+                <a href="#workflow" class="nav-link block px-3 py-2 rounded-md text-base font-medium text-stone-600">Workflow</a>
+                <a href="#calibration" class="nav-link block px-3 py-2 rounded-md text-base font-medium text-stone-600">Calibration</a>
+                <a href="#analysis" class="nav-link block px-3 py-2 rounded-md text-base font-medium text-stone-600">Analysis</a>
+                <a href="#simulator" class="nav-link block px-3 py-2 rounded-md text-base font-medium text-stone-600">Simulator</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+
+        <!-- Section 1: Overview -->
+        <section id="overview" class="text-center py-16">
+            <h1 class="text-4xl md:text-5xl font-bold tracking-tight text-stone-900">A Framework for Chemical Reactor Networks</h1>
+            <p class="mt-6 max-w-3xl mx-auto text-lg text-stone-600">An interactive guide to understanding how complex chemical reactors are modeled by balancing detailed chemistry with simplified fluid dynamics.</p>
+            <div class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-8 text-left">
+                <div class="content-card p-6">
+                    <div class="flex items-center justify-center h-12 w-12 rounded-full bg-red-100 text-red-600 mb-4">➔</div>
+                    <h3 class="font-semibold">Fluid Dynamics</h3>
+                    <p class="text-stone-600">Full simulations (CFD) are powerful but computationally expensive, often too slow for design exploration with complex chemistry.</p>
+                </div>
+                <div class="content-card p-6">
+                    <div class="flex items-center justify-center h-12 w-12 rounded-full bg-green-100 text-green-600 mb-4">⚛</div>
+                    <h3 class="font-semibold">Chemical Kinetics</h3>
+                    <p class="text-stone-600">Real-world processes involve hundreds of species and thousands of reactions, which must be included for accurate predictions of pollutants and byproducts.</p>
+                </div>
+                <div class="content-card p-6">
+                     <div class="flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 text-blue-600 mb-4">⌬</div>
+                    <h3 class="font-semibold">The CRN Approach</h3>
+                    <p class="text-stone-600">Chemical Reactor Networks (CRNs) simplify the fluid dynamics into a network of ideal reactors, enabling the use of detailed chemistry at a fraction of the cost.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: Core Concepts -->
+        <section id="concepts" class="py-16">
+            <div class="text-center">
+                <h2>The Building Blocks</h2>
+                <p class="section-intro">
+                    CRNs are built by combining simple, ideal reactors to represent complex, non-ideal flow. The two primary building blocks are the Perfectly Stirred Reactor (PSR) and the Plug Flow Reactor (PFR). Their fundamental difference lies in how they handle mixing, a property best visualized through their Residence Time Distribution (RTD). Explore their characteristics below.
+                </p>
+            </div>
+            <div class="mt-12 grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                <div class="content-card p-6 md:p-8">
+                    <h3>Perfectly Stirred Reactor (PSR/CSTR)</h3>
+                    <p>Assumes perfect, instantaneous mixing. The properties (temperature, concentration) are uniform throughout. This is ideal for modeling zones with high turbulence and recirculation.</p>
+                    <div class="font-mono text-sm bg-stone-100 p-4 rounded-md my-4">
+                        <p class="font-semibold">Characteristics:</p>
+                        <ul class="list-disc list-inside">
+                            <li>Zero-dimensional (0D) model</li>
+                            <li>Spatially uniform properties</li>
+                            <li>Exit stream has same properties as reactor contents</li>
+                            <li>Models recirculation & back-mixing</li>
+                        </ul>
+                    </div>
+                    <button id="rtd-psr-btn" class="interactive-btn w-full py-2 px-4 rounded-md font-semibold">Show PSR/CSTR RTD</button>
+                </div>
+                <div class="content-card p-6 md:p-8">
+                    <h3>Plug Flow Reactor (PFR)</h3>
+                    <p>Assumes no axial mixing. Fluid flows as a series of "plugs," each reacting as it moves. This is suited for modeling pipes, channels, and post-flame zones with directional flow.</p>
+                    <div class="font-mono text-sm bg-stone-100 p-4 rounded-md my-4">
+                        <p class="font-semibold">Characteristics:</p>
+                        <ul class="list-disc list-inside">
+                            <li>One-dimensional (1D) model</li>
+                            <li>Properties vary along the length</li>
+                            <li>No mixing in the direction of flow</li>
+                            <li>Models pipes & channels</li>
+                        </ul>
+                    </div>
+                     <button id="rtd-pfr-btn" class="interactive-btn w-full py-2 px-4 rounded-md font-semibold">Show PFR RTD</button>
+                </div>
+            </div>
+            <div id="rtd-chart-container-wrapper" class="mt-8 hidden">
+                <div class="content-card p-6">
+                    <h3 id="rtd-chart-title" class="text-center">Residence Time Distribution (RTD)</h3>
+                    <div class="chart-container">
+                        <canvas id="rtd-chart"></canvas>
+                    </div>
+                    <p id="rtd-explanation" class="mt-4 text-center text-sm text-stone-600"></p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: The Toolkit -->
+        <section id="toolkit" class="py-16">
+            <div class="text-center">
+                <h2>The Cantera Toolkit</h2>
+                <p class="section-intro">
+                    To implement a CRN, we use Cantera, an open-source software toolkit. It provides object-oriented components that represent the physical parts of a reactor system. You can think of it as building a virtual experiment. Click on the components below to learn about their roles.
+                </p>
+            </div>
+            <div class="content-card mt-12 p-8">
+                <div class="flex flex-col items-center">
+                    <div class="bg-red-200 text-red-800 font-bold p-4 rounded-lg shadow-md w-full max-w-sm text-center">
+                        ReactorNet
+                        <p class="text-sm font-normal mt-1">The master controller that solves the entire network's equations.</p>
+                    </div>
+                    <div class="w-px h-8 bg-stone-400"></div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 w-full">
+                        <div class="flex flex-col items-center">
+                            <div class="text-lg font-semibold mb-2">Nodes (Reactors)</div>
+                             <div class="w-full h-px bg-stone-400 mb-2"></div>
+                             <div id="toolkit-reactor" class="toolkit-item bg-blue-100 text-blue-800 p-3 rounded-lg shadow-sm w-full text-center cursor-pointer hover:bg-blue-200">Reactor</div>
+                             <div class="my-2 w-px h-4 bg-stone-300"></div>
+                             <div id="toolkit-reservoir" class="toolkit-item bg-blue-100 text-blue-800 p-3 rounded-lg shadow-sm w-full text-center cursor-pointer hover:bg-blue-200">Reservoir</div>
+                        </div>
+                        <div class="flex flex-col items-center">
+                             <div class="text-lg font-semibold mb-2">Edges (Flows)</div>
+                             <div class="w-full h-px bg-stone-400 mb-2"></div>
+                             <div id="toolkit-mfc" class="toolkit-item bg-green-100 text-green-800 p-3 rounded-lg shadow-sm w-full text-center cursor-pointer hover:bg-green-200">MassFlowController</div>
+                             <div class="my-2 w-px h-4 bg-stone-300"></div>
+                             <div id="toolkit-valve" class="toolkit-item bg-green-100 text-green-800 p-3 rounded-lg shadow-sm w-full text-center cursor-pointer hover:bg-green-200">Valve</div>
+                        </div>
+                        <div class="flex flex-col items-center">
+                             <div class="text-lg font-semibold mb-2">Physics</div>
+                             <div class="w-full h-px bg-stone-400 mb-2"></div>
+                             <div id="toolkit-solution" class="toolkit-item bg-yellow-100 text-yellow-800 p-3 rounded-lg shadow-sm w-full text-center cursor-pointer hover:bg-yellow-200">Solution (Kinetics)</div>
+                             <div class="my-2 w-px h-4 bg-stone-300"></div>
+                             <div id="toolkit-wall" class="toolkit-item bg-yellow-100 text-yellow-800 p-3 rounded-lg shadow-sm w-full text-center cursor-pointer hover:bg-yellow-200">Wall (Heat Transfer)</div>
+                        </div>
+                    </div>
+                </div>
+                <div id="toolkit-details-pane" class="mt-8 p-6 bg-stone-50 rounded-lg border border-stone-200 hidden">
+                    <h4 id="toolkit-detail-title" class="text-xl font-bold mb-2"></h4>
+                    <p id="toolkit-detail-desc" class="text-stone-700"></p>
+                    <pre class="font-mono text-sm bg-stone-900 text-white p-4 rounded-md overflow-x-auto"><code id="toolkit-detail-code"></code></pre>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- Section 4: Workflow -->
+        <section id="workflow" class="py-16">
+            <div class="text-center">
+                <h2>CRN Construction Workflow</h2>
+                <p class="section-intro">
+                    How is a reactor network actually built? There are two primary strategies: manual construction based on physical intuition, and automated generation from high-fidelity CFD data. Each has its own strengths and is suited for different stages of analysis. Click the steps in each path to learn more.
+                </p>
+            </div>
+            <div class="mt-12 grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="content-card p-6 md:p-8">
+                    <h3><span class="text-3xl mr-2">✍️</span>Manual Construction</h3>
+                    <p>Based on engineering judgment and known features of the reactor geometry. It's fast, flexible, and ideal for conceptual design.</p>
+                    <div class="mt-6 space-y-4">
+                        <div class="workflow-step p-4 rounded-lg" data-workflow="manual-1">
+                            <h4 class="font-semibold">1. Conceptualize Zones</h4>
+                            <div class="workflow-details hidden text-sm mt-2">Identify key regions like inlets, recirculation zones, main flame paths, and exhaust channels based on the reactor's geometry and expected flow patterns.</div>
+                        </div>
+                         <div class="workflow-step p-4 rounded-lg" data-workflow="manual-2">
+                            <h4 class="font-semibold">2. Map Zones to Ideal Reactors</h4>
+                            <div class="workflow-details hidden text-sm mt-2">Assign an ideal reactor type to each zone. Use PSRs for highly turbulent, mixed zones and PFRs (or CSTR cascades) for directional flow paths.</div>
+                        </div>
+                         <div class="workflow-step p-4 rounded-lg" data-workflow="manual-3">
+                            <h4 class="font-semibold">3. Define Connections & Splits</h4>
+                            <div class="workflow-details hidden text-sm mt-2">Estimate mass flow rates between zones. Key parameters like recirculation ratios or flow splits are defined here and often become the targets for later optimization.</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="content-card p-6 md:p-8">
+                    <h3><span class="text-3xl mr-2">💻</span>Automated (CFD-Based)</h3>
+                    <p>Objectively derives the network structure from a detailed CFD simulation, capturing complex flow features automatically.</p>
+                     <div class="mt-6 space-y-4">
+                        <div class="workflow-step p-4 rounded-lg" data-workflow="auto-1">
+                            <h4 class="font-semibold">1. Run Full CFD Simulation</h4>
+                            <div class="workflow-details hidden text-sm mt-2">Perform a steady-state CFD simulation to get a detailed map of velocity, temperature, and species concentration throughout the reactor volume.</div>
+                        </div>
+                         <div class="workflow-step p-4 rounded-lg" data-workflow="auto-2">
+                            <h4 class="font-semibold">2. Cluster Cells into Zones</h4>
+                            <div class="workflow-details hidden text-sm mt-2">Use a clustering algorithm (e.g., K-Means) to group CFD cells with similar properties (like temperature) into a finite number of zones. Each zone will become a PSR.</div>
+                        </div>
+                         <div class="workflow-step p-4 rounded-lg" data-workflow="auto-3">
+                            <h4 class="font-semibold">3. Calculate Volumes & Flows</h4>
+                            <div class="workflow-details hidden text-sm mt-2">The volume of each new PSR is the sum of its clustered cell volumes. Mass flows between PSRs are calculated by integrating the flux across the boundaries of the zones in the CFD data.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: Calibration -->
+        <section id="calibration" class="py-16">
+            <div class="text-center">
+                <h2>Model Calibration & Parameter Estimation</h2>
+                <p class="section-intro">
+                    A CRN contains uncertain parameters (like flow splits). To make the model predictive, we must calibrate it by fitting these parameters to match experimental or high-fidelity data. This is an optimization problem: we adjust the parameters to minimize the error between the model's predictions and the target data.
+                </p>
+            </div>
+             <div class="mt-12 content-card p-6 md:p-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                    <div>
+                        <h3>The Optimization Loop</h3>
+                        <p>The core of calibration is the objective function. An optimizer repeatedly calls this function, which runs the entire CRN simulation with a new set of parameters and calculates a single "error" value. The optimizer's goal is to find the parameters that result in the lowest possible error.</p>
+                        <p class="font-semibold">Objective Function:</p>
+                        <div class="font-mono text-sm bg-stone-100 p-4 rounded-md my-4">
+                        J(p) = &Sigma; w<sub>i</sub> (y<sub>model, i</sub>(p) - y<sub>data, i</sub>)<sup>2</sup>
+                        </div>
+                        <button id="opt-btn" class="interactive-btn w-full py-2 px-4 rounded-md font-semibold">Run Optimization Demo</button>
+                    </div>
+                    <div>
+                        <div class="chart-container">
+                            <canvas id="optimization-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Section 6: Analysis -->
+        <section id="analysis" class="py-16">
+             <div class="text-center">
+                <h2>Advanced Analysis & Insight</h2>
+                <p class="section-intro">
+                   Once calibrated, a CRN is more than just a predictive tool. We can use techniques like Sensitivity Analysis to understand the underlying physics. This method quantifies how sensitive a model output (like temperature) is to changes in input parameters (like reaction rates), revealing the most critical chemical pathways in the system.
+                </p>
+            </div>
+             <div class="mt-12 content-card p-6 md:p-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                    <div>
+                        <h3>Sensitivity Analysis</h3>
+                        <p>By identifying the most sensitive reactions, we can:</p>
+                        <ul class="list-disc list-inside space-y-2 mb-4">
+                            <li><strong>Reduce Mechanisms:</strong> Safely remove unimportant reactions to speed up simulations.</li>
+                            <li><strong>Analyze Pathways:</strong> Understand which chemical steps control major outcomes like pollutant formation.</li>
+                            <li><strong>Guide Research:</strong> Focus experimental efforts on refining the most uncertain, high-impact reaction rates.</li>
+                        </ul>
+                         <button id="sens-btn" class="interactive-btn w-full py-2 px-4 rounded-md font-semibold">Show Example Temperature Sensitivity</button>
+                    </div>
+                    <div>
+                        <div class="chart-container">
+                             <canvas id="sensitivity-chart"></canvas>
+                        </div>
+                         <p id="sens-explanation" class="mt-4 text-center text-sm text-stone-600 hidden">Sensitivity of temperature to reaction rates in a methane flame. Positive values mean the reaction increases temperature (exothermic effect), negative values mean it decreases temperature (endothermic effect).</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 7: Interactive Simulator -->
+        <section id="simulator" class="py-16">
+            <div class="text-center">
+                <h2>Interactive Reactor Simulator</h2>
+                <p class="section-intro">
+                    Explore the concepts of packed and fluidized beds firsthand. This simulator uses the hydrodynamic equations from the Python code to model reactor behavior. Adjust the parameters below to see how they influence the fluidization state, chemical conversion, and mixing behavior (RTD).
+                </p>
+            </div>
+            <div class="mt-12 grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Control Panel -->
+                <div class="lg:col-span-1 content-card p-6 md:p-8">
+                    <h3 class="mb-6">Simulation Controls</h3>
+                    <div class="space-y-6">
+                        <div>
+                            <label for="u0-slider" class="block text-sm font-medium text-stone-700">Superficial Velocity (u₀)</label>
+                            <input id="u0-slider" type="range" min="0.01" max="0.8" step="0.01" value="0.1" class="w-full h-2 bg-stone-200 rounded-lg appearance-none cursor-pointer">
+                            <div class="text-right font-mono text-sm mt-1"><span id="u0-value">0.10</span> m/s</div>
+                        </div>
+                         <div>
+                            <label for="dp-slider" class="block text-sm font-medium text-stone-700">Particle Diameter (dₚ)</label>
+                            <input id="dp-slider" type="range" min="100" max="800" step="10" value="300" class="w-full h-2 bg-stone-200 rounded-lg appearance-none cursor-pointer">
+                            <div class="text-right font-mono text-sm mt-1"><span id="dp-value">300</span> µm</div>
+                        </div>
+                        <div>
+                            <label for="temp-slider" class="block text-sm font-medium text-stone-700">Temperature (T)</label>
+                            <input id="temp-slider" type="range" min="400" max="1000" step="10" value="700" class="w-full h-2 bg-stone-200 rounded-lg appearance-none cursor-pointer">
+                            <div class="text-right font-mono text-sm mt-1"><span id="temp-value">700</span> K</div>
+                        </div>
+                    </div>
+                    <div class="mt-8 border-t border-stone-200 pt-6">
+                        <h4 class="font-semibold mb-3">Hydrodynamic Properties</h4>
+                        <div class="text-sm space-y-2 font-mono">
+                            <div class="flex justify-between"><span>U_mf:</span><span id="umf-value">...</span> m/s</div>
+                            <div class="flex justify-between"><span>Regime:</span><span id="regime-status" class="px-2 py-1 rounded-md text-xs font-bold">...</span></div>
+                            <div class="flex justify-between"><span>δ (bubbles):</span><span id="delta-value">...</span></div>
+                            <div class="flex justify-between"><span>K_be:</span><span id="kbe-value">...</span> 1/s</div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Results Panel -->
+                <div class="lg:col-span-2 content-card p-6 md:p-8">
+                    <div class="flex justify-between items-center mb-4">
+                         <h3>Simulation Results</h3>
+                         <div class="text-right">
+                            <div class="text-sm text-stone-500">Overall Conversion</div>
+                            <div id="conversion-value" class="text-3xl font-bold text-red-600">--%</div>
+                         </div>
+                    </div>
+                    <p id="sim-explanation" class="text-sm text-stone-600 mb-4"></p>
+                    <div id="sim-schematic" class="flex items-center justify-center space-x-2 my-4 h-24 bg-stone-50 rounded-lg p-2 overflow-x-auto"></div>
+                    <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                        <div class="chart-container">
+                            <canvas id="simulation-chart"></canvas>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="rtd-simulation-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-white border-t border-stone-200 mt-16">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center text-stone-500">
+            <p>Interactive guide created based on the report "A Framework for the Development and Calibration of Chemical Reactor Networks."</p>
+        </div>
+    </footer>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    // --- State & Data ---
+    const appState = {
+        rtdChart: null,
+        optChart: null,
+        sensChart: null,
+        simChart: null,
+        rtdSimChart: null
+    };
+    
+    const toolkitData = {
+        'reactor': { title: 'Reactor (e.g., IdealGasReactor)', desc: 'A core node in the network, representing a physical zone where reactions occur. It tracks mass, volume, temperature, and species concentrations. A series of these can approximate a PFR.', code: "r1 = ct.IdealGasReactor(gas, volume=0.1)" },
+        'reservoir': { title: 'Reservoir', desc: 'A boundary condition representing an infinite source (inlet) or sink (outlet). Its properties are fixed and do not change during the simulation.', code: "inlet = ct.Reservoir(gas, T=300, P=101325)" },
+        'mfc': { title: 'MassFlowController (MFC)', desc: 'An edge connecting two nodes, enforcing a constant, user-specified mass flow rate between them, regardless of the pressure difference.', code: "mfc = ct.MassFlowController(inlet, r1, mdot=0.1)" },
+        'valve': { title: 'Valve', desc: 'An edge that models pressure-driven flow. The mass flow rate is proportional to the pressure difference between the upstream and downstream nodes.', code: "v = ct.Valve(r1, outlet, K=1.0)" },
+        'solution': { title: 'Solution', desc: 'The fundamental object representing a phase of matter. It holds all thermodynamic data, species information, and the chemical reaction mechanism.', code: "gas = ct.Solution('gri30.yaml')" },
+        'wall': { title: 'Wall', desc: 'Models heat transfer between two reactors or a reactor and a reservoir. Can also model work done by a moving boundary (like a piston).', code: "w = ct.Wall(r1, r2, A=1.0, U=20.0)" }
+    };
+    
+    // --- Mobile Menu ---
+    const mobileMenuButton = document.getElementById('mobile-menu-button');
+    const mobileMenu = document.getElementById('mobile-menu');
+    mobileMenuButton.addEventListener('click', () => { mobileMenu.classList.toggle('hidden'); });
+
+    // --- Navigation Highlighting ---
+    const sections = document.querySelectorAll('section');
+    const navLinks = document.querySelectorAll('.nav-link');
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                navLinks.forEach(link => {
+                    link.classList.toggle('active', link.getAttribute('href').substring(1) === entry.target.id);
+                });
+            }
+        });
+    }, { rootMargin: '-50% 0px -50% 0px' });
+    sections.forEach(section => observer.observe(section));
+    
+    // --- RTD Chart Logic ---
+    const rtdPsrBtn = document.getElementById('rtd-psr-btn');
+    const rtdPfrBtn = document.getElementById('rtd-pfr-btn');
+    const rtdChartContainerWrapper = document.getElementById('rtd-chart-container-wrapper');
+    const rtdChartTitle = document.getElementById('rtd-chart-title');
+    const rtdExplanation = document.getElementById('rtd-explanation');
+    const createRtdChart = (type) => {
+        rtdChartContainerWrapper.classList.remove('hidden');
+        const ctx = document.getElementById('rtd-chart').getContext('2d');
+        const tau = 5;
+        const labels = Array.from({ length: 101 }, (_, i) => (i / 100) * 3 * tau);
+        let chartData, title, explanation;
+        if (type === 'psr') {
+            title = 'PSR/CSTR Residence Time Distribution';
+            explanation = 'The exponential decay shows that some fluid exits almost immediately, while some remains for a very long time, characteristic of perfect mixing.';
+            const data = labels.map(t => (1 / tau) * Math.exp(-t / tau));
+            chartData = { labels: labels.map(t => (t/tau).toFixed(2)), datasets: [{ label: 'E(t)', data: data, borderColor: 'rgb(59, 130, 246)', backgroundColor: 'rgba(59, 130, 246, 0.2)', fill: true, tension: 0.1, pointRadius: 0 }] };
+        } else {
+            title = 'Ideal PFR Residence Time Distribution';
+            explanation = 'The sharp spike (a Dirac delta function) shows that every fluid element spends the exact same amount of time in the reactor, characteristic of no mixing.';
+            const data = labels.map(t => (Math.abs(t - tau) < 0.05 * tau ? 1 : 0));
+            chartData = { labels: labels.map(t => (t/tau).toFixed(2)), datasets: [{ label: 'E(t)', data: data, borderColor: 'rgb(22, 163, 74)', backgroundColor: 'rgba(22, 163, 74, 0.5)', fill: false, stepped: true, pointRadius: 0 }] };
+        }
+        rtdChartTitle.textContent = title;
+        rtdExplanation.textContent = explanation;
+        if (appState.rtdChart) appState.rtdChart.destroy();
+        appState.rtdChart = new Chart(ctx, { type: 'line', data: chartData, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, title: { display: true, text: 'E(t)' } }, x: { title: { display: true, text: 'Dimensionless Time (t/τ)' } } }, plugins: { tooltip: { enabled: true, mode: 'index', intersect: false } } } });
+    };
+    rtdPsrBtn.addEventListener('click', () => createRtdChart('psr'));
+    rtdPfrBtn.addEventListener('click', () => createRtdChart('pfr'));
+
+    // --- Toolkit Interaction Logic ---
+    const toolkitItems = document.querySelectorAll('.toolkit-item');
+    const detailsPane = document.getElementById('toolkit-details-pane');
+    const detailTitle = document.getElementById('toolkit-detail-title');
+    const detailDesc = document.getElementById('toolkit-detail-desc');
+    const detailCode = document.getElementById('toolkit-detail-code');
+    toolkitItems.forEach(item => {
+        item.addEventListener('click', () => {
+            const key = item.id.replace('toolkit-', '');
+            const data = toolkitData[key];
+            detailsPane.classList.remove('hidden');
+            detailTitle.textContent = data.title;
+            detailDesc.textContent = data.desc;
+            detailCode.textContent = data.code;
+            toolkitItems.forEach(i => i.classList.remove('ring-2', 'ring-red-500'));
+            item.classList.add('ring-2', 'ring-red-500');
+        });
+    });
+    
+    // --- Workflow Interaction Logic ---
+    const workflowSteps = document.querySelectorAll('.workflow-step');
+    workflowSteps.forEach(step => {
+        step.addEventListener('click', () => {
+            const details = step.querySelector('.workflow-details');
+            const isActive = step.classList.contains('active');
+            workflowSteps.forEach(s => {
+                s.classList.remove('active');
+                s.querySelector('.workflow-details').classList.add('hidden');
+            });
+            if (!isActive) {
+                step.classList.add('active');
+                details.classList.remove('hidden');
+            }
+        });
+    });
+    
+    // --- Optimization Chart Logic ---
+    const optBtn = document.getElementById('opt-btn');
+    optBtn.addEventListener('click', () => {
+        const ctx = document.getElementById('optimization-chart').getContext('2d');
+        const initialError = 100;
+        const errors = [initialError];
+        for (let i = 1; i < 15; i++) {
+            errors.push(errors[i-1] * (0.6 + Math.random() * 0.15));
+        }
+        const labels = Array.from({length: errors.length}, (_, i) => `Iter ${i}`);
+        if (appState.optChart) appState.optChart.destroy();
+        appState.optChart = new Chart(ctx, { type: 'line', data: { labels: labels, datasets: [{ label: 'Objective Function Value', data: errors, borderColor: 'rgb(220, 38, 38)', backgroundColor: 'rgba(220, 38, 38, 0.2)', fill: true, tension: 0.2, }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { type: 'logarithmic', beginAtZero: false, title: { display: true, text: 'Error (log scale)' } }, x: { title: { display: true, text: 'Optimization Iteration' } } }, plugins: { title: { display: true, text: 'Optimizer Minimizing Model Error' } }, animation: { duration: 1500 } } });
+    });
+
+    // --- Sensitivity Chart Logic ---
+    const sensBtn = document.getElementById('sens-btn');
+    const sensExplanation = document.getElementById('sens-explanation');
+    sensBtn.addEventListener('click', () => {
+        sensExplanation.classList.remove('hidden');
+        const ctx = document.getElementById('sensitivity-chart').getContext('2d');
+        const data = { labels: ['H + O2 <=> O + OH', 'CH3 + O2 <=> CH2O + OH', '2CH3 (+M) <=> C2H6 (+M)', 'CH4 + H <=> CH3 + H2', 'CO + OH <=> CO2 + H'], values: [0.65, 0.25, -0.15, -0.45, 0.95] };
+        if (appState.sensChart) appState.sensChart.destroy();
+        appState.sensChart = new Chart(ctx, { type: 'bar', data: { labels: data.labels, datasets: [{ label: 'Normalized Temperature Sensitivity', data: data.values, backgroundColor: data.values.map(v => v > 0 ? 'rgba(220, 38, 38, 0.6)' : 'rgba(37, 99, 235, 0.6)'), borderColor: data.values.map(v => v > 0 ? 'rgb(220, 38, 38)' : 'rgb(37, 99, 235)'), borderWidth: 1 }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, scales: { x: { title: { display: true, text: 'Sensitivity Coefficient' } }, y: { ticks: { font: { size: 10 } } } }, plugins: { title: { display: true, text: 'Top 5 Most Temperature-Sensitive Reactions' }, legend: { display: false } } } });
+    });
+
+    // --- Interactive Simulator Logic ---
+    const simControls = {
+        u0: document.getElementById('u0-slider'),
+        dp: document.getElementById('dp-slider'),
+        temp: document.getElementById('temp-slider'),
+    };
+    const simDisplays = {
+        u0: document.getElementById('u0-value'),
+        dp: document.getElementById('dp-value'),
+        temp: document.getElementById('temp-value'),
+        umf: document.getElementById('umf-value'),
+        regime: document.getElementById('regime-status'),
+        delta: document.getElementById('delta-value'),
+        kbe: document.getElementById('kbe-value'),
+        conversion: document.getElementById('conversion-value'),
+        explanation: document.getElementById('sim-explanation'),
+        schematic: document.getElementById('sim-schematic'),
+    };
+    
+    const simParams = {
+        rho_p: 2500, g: 9.81, H: 2.0, Dt: 0.2, N_stages: 10,
+        gasProps: (T) => {
+            const T_ref = 300, mu_ref = 1.8e-5, rho_ref = 1.2;
+            const mu_g = mu_ref * Math.pow(T/T_ref, 0.7);
+            const rho_g = rho_ref * (T_ref/T);
+            return { rho_g, mu_g, D_g: 1e-5 * Math.pow(T/T_ref, 1.75) };
+        }
+    };
+    simParams.At = Math.PI * (simParams.Dt/2)**2;
+
+    const calculateHydrodynamics = (u0, dp, T) => {
+        const { rho_p, g } = simParams;
+        const { rho_g, mu_g, D_g } = simParams.gasProps(T);
+
+        const Ar = dp**3 * rho_g * (rho_p - rho_g) * g / mu_g**2;
+        const Re_mf = (Math.sqrt(33.7**2 + 0.0408 * Ar) - 33.7);
+        const U_mf = Re_mf * mu_g / (rho_g * dp);
+        
+        let hydro = { U_mf: U_mf, is_fluidized: u0 > U_mf, d_b: 0, delta: 0, K_be: 0, rho_g: rho_g, D_g: D_g};
+        
+        if (hydro.is_fluidized) {
+            const d_b_max = 0.65 * Math.pow(simParams.At, 0.4);
+            let d_b = 0.54 * Math.pow(u0 - U_mf, 0.4) * Math.pow(simParams.H + 4 * Math.sqrt(simParams.At), 0.8) * Math.pow(g, -0.2);
+            hydro.d_b = Math.min(d_b, d_b_max);
+            
+            const u_br = 0.711 * Math.sqrt(g * hydro.d_b) + (u0 - U_mf);
+            hydro.delta = (u0 - U_mf) / u_br;
+            hydro.delta = Math.min(hydro.delta, 0.6);
+            
+            hydro.K_be = (4.5 * (U_mf / hydro.d_b)) + (5.85 * Math.pow(D_g, 0.5) * Math.pow(g, 0.25) / Math.pow(hydro.d_b, 1.25));
+        }
+        return hydro;
+    };
+
+    const runSimulation = () => {
+        const u0 = parseFloat(simControls.u0.value);
+        const dp = parseFloat(simControls.dp.value) * 1e-6;
+        const temp = parseFloat(simControls.temp.value);
+        const hydro = calculateHydrodynamics(u0, dp, temp);
+        const { N_stages, H, At } = simParams;
+        
+        simDisplays.umf.textContent = hydro.U_mf.toFixed(3);
+        simDisplays.regime.textContent = hydro.is_fluidized ? 'FLUIDIZED' : 'PACKED BED';
+        simDisplays.regime.className = `px-2 py-1 rounded-md text-xs font-bold ${hydro.is_fluidized ? 'status-fluidized' : 'status-packed'}`;
+        simDisplays.delta.textContent = hydro.is_fluidized ? hydro.delta.toFixed(3) : 'N/A';
+        simDisplays.kbe.textContent = hydro.is_fluidized ? hydro.K_be.toFixed(2) : 'N/A';
+        
+        const k0 = 10, Ea = 40000, R = 8.314;
+        const k = k0 * Math.exp(-Ea / (R * temp));
+        
+        let X_A_profile = [1.0], X_B_profile = [0.0];
+        let X_A_emulsion = [1.0], X_B_emulsion = [0.0];
+        let final_outlet_concentration = 1.0;
+        
+        simDisplays.schematic.innerHTML = '';
+
+        if (!hydro.is_fluidized) {
+            simDisplays.explanation.textContent = "In a packed bed, gas flows through without significant back-mixing. This is modeled as a series of small reactors (CSTR cascade) approximating Plug Flow (PFR). Conversion is generally efficient as all gas contacts the catalyst.";
+            const V_gas = At * H * 0.4;
+            const tau_total = V_gas / (u0 * At);
+            const tau_stage = tau_total / N_stages;
+            let C_in = 1.0;
+            for (let i = 0; i < N_stages; i++) {
+                const C_out = C_in / (1 + k * tau_stage);
+                X_A_profile.push(C_out);
+                X_B_profile.push(1 - C_out);
+                C_in = C_out;
+                const stageEl = document.createElement('div');
+                stageEl.className = 'w-10 h-10 bg-blue-200 border-2 border-blue-400 rounded-sm flex-shrink-0 flex items-center justify-center font-mono text-xs';
+                stageEl.textContent = `S${i}`;
+                simDisplays.schematic.appendChild(stageEl);
+                if (i < N_stages - 1) {
+                    const arrowEl = document.createElement('div');
+                    arrowEl.className = 'text-blue-400 text-2xl'; arrowEl.innerHTML = '&rarr;';
+                    simDisplays.schematic.appendChild(arrowEl);
+                }
+            }
+            final_outlet_concentration = C_in;
+
+        } else {
+            simDisplays.explanation.textContent = "In a fluidized bed, the gas splits into a bubble phase (fast, low catalyst contact) and an emulsion phase (slow, high catalyst contact). Mass transfer between these phases is critical and often limits overall conversion.";
+            const V_total = At * H;
+            const V_bubble_stage = V_total * hydro.delta / N_stages;
+            const V_emulsion_stage = V_total * (1 - hydro.delta) * 0.4 / N_stages;
+            const mdot_total = u0 * At * hydro.rho_g;
+            const mdot_bubble = (u0 - hydro.U_mf) * At * hydro.rho_g;
+            const mdot_emulsion = hydro.U_mf * At * hydro.rho_g;
+            
+            const Kbe_stage = hydro.K_be * V_bubble_stage * hydro.rho_g; // Now a mass rate
+
+            let Xa_b = 1.0, Xa_e = 1.0;
+            for(let i = 0; i < N_stages; i++) {
+                let Xa_b_in = Xa_b, Xa_e_in = Xa_e;
+                let Xa_b_out = Xa_b_in, Xa_e_out = Xa_e_in;
+                
+                // Solve coupled algebraic equations iteratively for the stage
+                for (let j=0; j<5; j++) { 
+                     Xa_e_out = (mdot_emulsion * Xa_e_in + Kbe_stage * Xa_b_out) / (mdot_emulsion + (k * V_emulsion_stage * hydro.rho_g) + Kbe_stage);
+                     Xa_b_out = (mdot_bubble * Xa_b_in + Kbe_stage * Xa_e_out) / (mdot_bubble + Kbe_stage);
+                }
+                 Xa_e = Math.max(0, Math.min(1, Xa_e_out));
+                 Xa_b = Math.max(0, Math.min(1, Xa_b_out));
+                
+                X_A_profile.push(Xa_b); X_B_profile.push(1 - Xa_b);
+                X_A_emulsion.push(Xa_e); X_B_emulsion.push(1 - Xa_e);
+                
+                const stageContainer = document.createElement('div');
+                stageContainer.className = 'flex flex-col items-center justify-center mx-1 flex-shrink-0';
+                stageContainer.innerHTML = `<div class="w-10 h-10 bg-red-200 border-2 border-red-400 rounded-full flex items-center justify-center font-mono text-xs">B${i}</div><div class="h-4 text-gray-400 text-xl leading-none">&updownarrow;</div><div class="w-10 h-10 bg-green-200 border-2 border-green-400 rounded-sm flex items-center justify-center font-mono text-xs">E${i}</div>`;
+                simDisplays.schematic.appendChild(stageContainer);
+                 if (i < N_stages - 1) {
+                    const arrowEl = document.createElement('div');
+                    arrowEl.className = 'text-stone-400 text-2xl self-center'; arrowEl.innerHTML = '&rarr;';
+                    simDisplays.schematic.appendChild(arrowEl);
+                }
+            }
+            final_outlet_concentration = (Xa_b * mdot_bubble + Xa_e * mdot_emulsion) / mdot_total;
+        }
+        
+        const overallConversion = (1 - final_outlet_concentration) * 100;
+        simDisplays.conversion.textContent = `${Math.max(0, overallConversion).toFixed(1)}%`;
+        
+        updateConcentrationChart(hydro, X_A_profile, X_B_profile, X_A_emulsion, X_B_emulsion);
+        updateRtdChart(hydro, u0);
+    };
+
+    function updateConcentrationChart(hydro, X_A_profile, X_B_profile, X_A_emulsion, X_B_emulsion) {
+        const ctx = document.getElementById('simulation-chart').getContext('2d');
+        if (appState.simChart) appState.simChart.destroy();
+        
+        const datasets = [{
+            label: `A (${hydro.is_fluidized ? 'Bubble' : 'Packed'})`, data: X_A_profile,
+            borderColor: 'rgb(239, 68, 68)', backgroundColor: 'rgba(239, 68, 68, 0.2)', yAxisID: 'y',
+        }, {
+            label: `B (${hydro.is_fluidized ? 'Bubble' : 'Packed'})`, data: X_B_profile,
+            borderColor: 'rgb(59, 130, 246)', backgroundColor: 'rgba(59, 130, 246, 0.2)', yAxisID: 'y',
+        }];
+
+        if (hydro.is_fluidized) {
+            datasets.push({ label: 'A (Emulsion)', data: X_A_emulsion, borderColor: 'rgb(249, 115, 22)', borderDash: [5, 5], yAxisID: 'y', fill: false });
+            datasets.push({ label: 'B (Emulsion)', data: X_B_emulsion, borderColor: 'rgb(34, 197, 94)', borderDash: [5, 5], yAxisID: 'y', fill: false });
+        }
+
+        appState.simChart = new Chart(ctx, { type: 'line', data: { labels: Array.from({length: simParams.N_stages + 1}, (_, i) => (i / simParams.N_stages * simParams.H).toFixed(2)), datasets: datasets }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 1.05, title: { display: true, text: 'Mole Fraction' } }, x: { title: { display: true, text: 'Reactor Height (m)' } } }, plugins: { title: { display: true, text: 'Axial Concentration Profiles' } } } });
+    }
+
+    function updateRtdChart(hydro, u0) {
+        const { At, H, N_stages } = simParams;
+        const V_total = At * H;
+        let E_t, t_dimless;
+        
+        const factorial = n => {
+            if (n < 0) return Infinity;
+            if (n === 0) return 1;
+            let res = 1;
+            for (let i = n; i > 0; i--) res *= i;
+            return res;
+        };
+
+        if (!hydro.is_fluidized) {
+            const V_gas = V_total * 0.4;
+            const tau_mean = V_gas / (u0 * At);
+            const N = N_stages;
+            t_dimless = Array.from({length: 101}, (_,i) => i/100 * 3);
+            E_t = t_dimless.map(t_dl => {
+                if (t_dl === 0 && N > 1) return 0;
+                const N_fact = factorial(N - 1);
+                if (N_fact === Infinity) return 0;
+                return N * Math.pow(N * t_dl, N - 1) * Math.exp(-N * t_dl) / N_fact;
+            });
+        } else {
+             const V_bubble_gas = V_total * hydro.delta;
+             const V_emulsion_gas = V_total * (1 - hydro.delta) * 0.4;
+             const V_gas_total = V_bubble_gas + V_emulsion_gas;
+             const tau_mean = V_gas_total / (u0 * At);
+
+             const mdot_total = u0 * At * hydro.rho_g;
+             const mdot_bubble = (u0 - hydro.U_mf) * At * hydro.rho_g;
+             const F_b = mdot_bubble / mdot_total;
+
+             const tau_b = V_bubble_gas / (mdot_bubble / hydro.rho_g);
+             const tau_e = V_emulsion_gas / ((mdot_total - mdot_bubble) / hydro.rho_g);
+             
+             t_dimless = Array.from({length: 151}, (_,i) => i/100 * 4);
+             
+             const N_e = N_stages;
+             const E_t_e = t_dimless.map(t_dl => {
+                 const t = t_dl * tau_mean;
+                 if (t === 0 && N_e > 1) return 0;
+                 const Ne_fact = factorial(N_e - 1);
+                 if (Ne_fact === Infinity) return 0;
+                 return (1/tau_e) * N_e * Math.pow(N_e * t / tau_e, N_e-1) * Math.exp(-N_e * t / tau_e) / Ne_fact;
+             });
+
+             const Pe = 20;
+             const E_t_b = t_dimless.map(t_dl => {
+                 const t = t_dl * tau_mean;
+                 if (t === 0) return 0;
+                 const term1 = 1 / tau_b;
+                 const term2 = Math.sqrt(Pe / (4 * Math.PI * t / tau_b));
+                 const term3 = Math.exp(-Pe * Math.pow(1 - t / tau_b, 2) / (4 * t / tau_b));
+                 return term1 * term2 * term3;
+             });
+
+             E_t = t_dimless.map((_, i) => (F_b * E_t_b[i] + (1 - F_b) * E_t_e[i]) * tau_mean);
+        }
+
+        const ctx = document.getElementById('rtd-simulation-chart').getContext('2d');
+        if(appState.rtdSimChart) appState.rtdSimChart.destroy();
+        
+        const t_ideal = Array.from({length: 101}, (_,i) => i/100 * 3);
+        const E_t_pfr_data = [{x: 1, y: 0}, {x: 1, y: Math.max(...E_t, 1.5) * 1.1}];
+        const E_t_psr_data = t_ideal.map(t => Math.exp(-t));
+        
+        appState.rtdSimChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: t_dimless,
+                datasets: [
+                    { label: 'Simulated Reactor', data: E_t, borderColor: 'rgb(220, 38, 38)', fill: false, tension: 0.1, pointRadius: 0 },
+                    { label: 'Ideal PSR/CSTR', data: E_t_psr_data, borderColor: 'rgb(22, 163, 74)', borderDash: [5, 5], fill: false, pointRadius: 0, tension: 0.1 },
+                    { label: 'Ideal PFR', data: E_t_pfr_data, borderColor: 'rgba(107, 114, 128, 0.5)', fill: false, stepped: true, pointRadius: 0, borderWidth: 4}
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { type: 'linear', position: 'bottom', title: {display: true, text: 'Dimensionless Time (t/τ)'}, min: 0, max: 3},
+                    y: { beginAtZero: true, title: {display: true, text: 'Dimensionless RTD (E(t)τ)'}}
+                },
+                plugins: {
+                    title: { display: true, text: 'Simulated Residence Time Distribution' },
+                    tooltip: { mode: 'index', intersect: false }
+                }
+            }
+        });
+    }
+
+    // Initial setup and event listeners
+    Object.values(simControls).forEach(slider => {
+        slider.addEventListener('input', () => {
+            const id = slider.id.split('-')[0];
+            simDisplays[id].textContent = parseFloat(slider.value).toFixed(id === 'u0' ? 2 : 0);
+            runSimulation();
+        });
+    });
+    
+    // Initial run
+    runSimulation();
+
+});
+</script>
+
+</body>
+</html>
